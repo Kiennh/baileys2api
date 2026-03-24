@@ -1,0 +1,124 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "WhatsApp API",
+    "version": "1.0.0",
+    "description": "API documentation for the WhatsApp Baileys integration"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Generate QR code",
+        "responses": {
+          "200": {
+            "description": "QR generated"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout and reset session",
+        "responses": {
+          "200": {
+            "description": "Logged out"
+          }
+        }
+      }
+    },
+    "/auth/status": {
+      "get": {
+        "summary": "Get connection status",
+        "responses": {
+          "200": {
+            "description": "Current status"
+          }
+        }
+      }
+    },
+    "/messages/send": {
+      "post": {
+        "summary": "Send direct message",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "example": "849xxxxxxxx@s.whatsapp.net" },
+                  "message": { "type": "string", "example": "Hello" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message sent" }
+        }
+      }
+    },
+    "/groups/list": {
+      "get": {
+        "summary": "List all participating groups",
+        "responses": {
+          "200": { "description": "List of groups" }
+        }
+      }
+    },
+    "/groups/send": {
+      "post": {
+        "summary": "Send message to a group",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groupId": { "type": "string", "example": "123456789@g.us" },
+                  "message": { "type": "string", "example": "Hello group" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Group message sent" }
+        }
+      }
+    },
+    "/settings/webhook": {
+      "get": {
+        "summary": "Get webhook configuration",
+        "responses": {
+          "200": { "description": "Webhook URL" }
+        }
+      },
+      "post": {
+        "summary": "Update webhook configuration",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "webhookUrl": { "type": "string", "example": "https://myserver.com/callback" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Webhook updated" }
+        }
+      }
+    }
+  }
+}

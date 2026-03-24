@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { getConfig } = require('../utils/config');
 require('dotenv').config();
 
 async function handleMessages(m, sock, io) {
@@ -24,7 +25,8 @@ async function handleMessages(m, sock, io) {
                 }
 
                 // Send to webhook
-                const webhookUrl = process.env.WEBHOOK_URL;
+                const config = getConfig();
+                const webhookUrl = config.webhookUrl;
                 if (webhookUrl) {
                     try {
                         await axios.post(webhookUrl, {
