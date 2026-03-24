@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp API Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
+        .card { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h1, h2 { color: #333; }
+        #qr-container { display: none; text-align: center; padding: 20px; }
+        #status { font-weight: bold; padding: 5px 10px; border-radius: 4px; }
+        .connected { background-color: #e6f4ea; color: #1e8e3e; }
+        .disconnected { background-color: #fce8e6; color: #d93025; }
+        #messages { height: 300px; overflow-y: scroll; border: 1px solid #eee; padding: 10px; background: #fafafa; }
+        .message-item { margin-bottom: 10px; padding: 8px; border-bottom: 1px solid #f0f0f0; }
+        .message-item b { color: #075e54; }
+        .group-tag { font-size: 0.8em; background: #e1f5fe; color: #0288d1; padding: 2px 5px; border-radius: 3px; margin-left: 5px; }
+        input, textarea, select { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #25d366; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #128c7e; }
+        button.secondary { background-color: #666; }
+        .flex { display: flex; gap: 20px; }
+        .flex > div { flex: 1; }
+    </style>
+</head>
+<body>
+    <h1>WhatsApp API Dashboard</h1>
+
+    <div class="card">
+        <h2>Connection: <span id="status" class="disconnected">disconnected</span></h2>
+        <div id="qr-container">
+            <p>Scan this QR code with WhatsApp:</p>
+            <div id="qrcode" style="display: flex; justify-content: center;"></div>
+        </div>
+        <button class="secondary" onclick="logout()">Logout / Reset Session</button>
+        <button onclick="refreshGroups()">Refresh Groups</button>
+    </div>
+
+    <div class="flex">
+        <div>
+            <div class="card">
+                <h2>Send Message</h2>
+                <label for="to">Recipient (Direct or Select Group)</label>
+                <input type="text" id="to" placeholder="Phone (e.g. 849xxxxxxxx@s.whatsapp.net) or Group ID">
+
+                <label for="group-select">OR Select Group</label>
+                <select id="group-select" onchange="document.getElementById('to').value = this.value">
+                    <option value="">-- Select a group --</option>
+                </select>
+
+                <label for="message">Message</label>
+                <textarea id="message" placeholder="Type your message here..."></textarea>
+                <button onclick="sendMessage()">Send Message</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="card">
+                <h2>Live Messages</h2>
+                <div id="messages"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let qrcode = new QRCode(document.getElementById("qrcode"), {
+            width: 256,
+            height: 256
+        });
+
+        socket.on('status', (status) => {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = status;
+            statusEl.className = status;
+
+            if (status === 'connected') {
+                document.getElementById('qr-container').style.display = 'none';
+                refreshGroups();
+            } else {
+                // Clear groups if disconnected
+                document.getElementById('group-select').innerHTML = '<option value="">-- Select a group --</option>';
+            }
+        });
+
+        socket.on('qr', (qr) => {
+            document.getElementById('qr-container').style.display = 'block';
+            qrcode.clear();
+            qrcode.makeCode(qr);
+        });
+
+        socket.on('message', (data) => {
+            const messagesEl = document.getElementById('messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message-item';
+
+            let label = `<b>${data.from}</b>`;
+            if (data.isGroup) {
+                label += ` <span class="group-tag">Group</span>`;
+                if (data.participant) {
+                    label += ` <br><small>By: ${data.participant}</small>`;
+                }
+            }
+
+            msgDiv.innerHTML = `${label}: ${data.text}`;
+            messagesEl.prepend(msgDiv); // Newest on top
+        });
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                location.reload();
+            }
+        }
+
+        async function refreshGroups() {
+            try {
+                const response = await fetch('/api/groups/list');
+                const data = await response.json();
+                const select = document.getElementById('group-select');
+
+                // Keep the first option
+                select.innerHTML = '<option value="">-- Select a group --</option>';
+
+                if (data.groups) {
+                    Object.values(data.groups).forEach(group => {
+                        const opt = document.createElement('option');
+                        opt.value = group.id;
+                        opt.innerText = group.subject || group.id;
+                        select.appendChild(opt);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to fetch groups', err);
+            }
+        }
+
+        async function sendMessage() {
+            const to = document.getElementById('to').value;
+            const message = document.getElementById('message').value;
+
+            if (!to || !message) return alert('Please fill in both fields');
+
+            const isGroup = to.endsWith('@g.us');
+            const endpoint = isGroup ? '/api/groups/send' : '/api/messages/send';
+            const body = isGroup ? { groupId: to, message } : { to, message };
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('Message sent!');
+                document.getElementById('message').value = '';
+            } else {
+                alert('Error: ' + result.error);
+            }
+        }
+    </script>
+</body>
+</html>
