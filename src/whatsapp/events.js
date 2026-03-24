@@ -8,13 +8,19 @@ async function handleMessages(m, sock, io) {
         if (!msg.key.fromMe && msg.message) {
             const from = msg.key.remoteJid;
             const text = msg.message.conversation || msg.message.extendedTextMessage?.text;
+            const isGroup = from.endsWith('@g.us');
 
             if (text) {
-                console.log(`Received message from ${from}: ${text}`);
+                console.log(`Received ${isGroup ? 'group' : 'direct'} message from ${from}: ${text}`);
 
                 // Emit to dashboard
                 if (io) {
-                    io.emit('message', { from, text });
+                    io.emit('message', {
+                        from,
+                        text,
+                        isGroup,
+                        participant: isGroup ? msg.key.participant : null
+                    });
                 }
 
                 // Send to webhook
@@ -25,6 +31,8 @@ async function handleMessages(m, sock, io) {
                             event: 'message.received',
                             data: {
                                 from,
+                                isGroup,
+                                participant: msg.key.participant,
                                 message: msg.message
                             }
                         });

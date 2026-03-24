@@ -96,7 +96,15 @@ async function sendMessage(to, message) {
     return await sock.sendMessage(to, { text: message });
 }
 
+async function getGroups() {
+    if (!sock || status !== "connected") {
+        throw new Error("WhatsApp not connected");
+    }
+    return await sock.groupFetchAllParticipating();
+}
+
 module.exports = {
+    getGroups,
     connectToWhatsApp,
     getStatus,
     getQR,

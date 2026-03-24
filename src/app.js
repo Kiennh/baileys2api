@@ -9,6 +9,7 @@ const { initWebSocket } = require('./websocket/socket');
 
 const authRoutes = require('./routes/auth.routes');
 const messageRoutes = require('./routes/message.routes');
+const groupRoutes = require('./routes/group.routes');
 const webhookRoutes = require('./routes/webhook.routes');
 
 const app = express();
@@ -24,6 +25,7 @@ app.use('/dashboard', express.static(path.join(__dirname, '../dashboard')));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/groups', groupRoutes);
 app.use('/api', webhookRoutes);
 
 // Root
