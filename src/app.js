@@ -3,6 +3,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('../docs/swagger.json');
 
 const { connectToWhatsApp } = require('./whatsapp/client');
 const { initWebSocket } = require('./websocket/socket');
@@ -21,6 +23,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static dashboard
 app.use('/dashboard', express.static(path.join(__dirname, '../dashboard')));
+
+// API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // API Routes
 app.use('/api/auth', authRoutes);

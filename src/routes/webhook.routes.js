@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const webhookController = require('../controllers/webhook.controller');
 
-router.post('/webhook', (req, res) => {
-    console.log('--- Webhook received ---');
-    console.log(JSON.stringify(req.body, null, 2));
-    console.log('------------------------');
-    res.status(200).send('Webhook received');
-});
+// Existing webhook receiver
+router.post('/webhook', webhookController.handleWebhook);
+
+// Webhook settings
+router.get('/settings/webhook', webhookController.getSettings);
+router.post('/settings/webhook', webhookController.updateSettings);
 
 module.exports = router;

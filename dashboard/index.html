@@ -24,9 +24,17 @@
         button.secondary { background-color: #666; }
         .flex { display: flex; gap: 20px; }
         .flex > div { flex: 1; }
+        .nav { margin-bottom: 20px; }
+        .nav a { margin-right: 15px; color: #25d366; text-decoration: none; font-weight: bold; }
+        .nav a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
+    <div class="nav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/api-docs" target="_blank">API Docs</a>
+    </div>
+
     <h1>WhatsApp API Dashboard</h1>
 
     <div class="card">
@@ -37,6 +45,13 @@
         </div>
         <button class="secondary" onclick="logout()">Logout / Reset Session</button>
         <button onclick="refreshGroups()">Refresh Groups</button>
+    </div>
+
+    <div class="card">
+        <h2>Webhook Configuration</h2>
+        <label for="webhook-url">Webhook URL</label>
+        <input type="text" id="webhook-url" placeholder="https://your-server.com/webhook">
+        <button onclick="updateWebhook()">Save Webhook URL</button>
     </div>
 
     <div class="flex">
@@ -71,6 +86,41 @@
             width: 256,
             height: 256
         });
+
+        // Initialize Webhook Settings
+        async function fetchWebhookSettings() {
+            try {
+                const response = await fetch('/api/settings/webhook');
+                const data = await response.json();
+                if (data.webhookUrl) {
+                    document.getElementById('webhook-url').value = data.webhookUrl;
+                }
+            } catch (err) {
+                console.error('Failed to fetch webhook settings', err);
+            }
+        }
+
+        fetchWebhookSettings();
+
+        async function updateWebhook() {
+            const webhookUrl = document.getElementById('webhook-url').value;
+            try {
+                const response = await fetch('/api/settings/webhook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ webhookUrl })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert('Webhook URL updated successfully!');
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (err) {
+                alert('Failed to update webhook URL');
+                console.error(err);
+            }
+        }
 
         socket.on('status', (status) => {
             const statusEl = document.getElementById('status');

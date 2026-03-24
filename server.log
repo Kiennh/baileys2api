@@ -1,0 +1,10 @@
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+Server is running on http://localhost:3000
+⚠️ The printQRInTerminal option has been deprecated. You will no longer receive QR codes in the terminal automatically. Please listen to the connection.update event yourself and handle the QR your way. You can remove this message by removing this opttion. This message will be removed in a future version.
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+{"level":30,"time":1774323976174,"pid":6567,"hostname":"devbox","browser":["Mac OS","Chrome","14.4.1"],"helloMsg":{"clientHello":{"ephemeral":"PZ9WCy0hIVUx2k+NPFHvUIz5xQUEdygrcWEsLBDaBkg="}},"msg":"connected to WA"}
+{"level":30,"time":1774323976318,"pid":6567,"hostname":"devbox","node":{"passive":false,"userAgent":{"platform":"WEB","appVersion":{"primary":2,"secondary":3000,"tertiary":1035194821},"mcc":"000","mnc":"000","osVersion":"0.1","device":"Desktop","osBuildNumber":"0.1","releaseChannel":"RELEASE","localeLanguageIso6391":"en","localeCountryIso31661Alpha2":"US"},"webInfo":{"webSubPlatform":"WEB_BROWSER"},"connectType":"WIFI_UNKNOWN","connectReason":"USER_ACTIVATED","devicePairingData":{"eRegid":"AAAAVQ==","eKeytype":"BQ==","eIdent":"SSIpZuryk3M1OTyFKocdszRfMM8DmErL+a4J3YIUdy4=","eSkeyId":"AAAB","eSkeyVal":"ngOdj2sz/tnaF4EX4dTGrXGsu3Hx1NIkEFFNutY3h04=","eSkeySig":"zrKyC+47Q9nvtunawVkjUCVbUfS0QMN6HCp+j+JaVcLx9OWl926g0sQXjNQdukRa4SJZsRgFbFGVZCFvFmXRBg==","buildHash":"oslHHv+RCp4a5lmJCiiHLQ==","deviceProps":"CgZNYWMgT1MSBggKEA8YBxgBIAEqFxiAUCABMAA4AUABSAFQAVgBYAFwAXgA"},"pull":false},"msg":"not logged in, attempting registration..."}
+User connected to dashboard
+User disconnected from dashboard
+User connected to dashboard
+User disconnected from dashboard
