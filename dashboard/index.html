@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp API Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        #qr-container { display: none; text-align: center; }
+        #status { font-weight: bold; }
+        .connected { color: green; }
+        .disconnected { color: red; }
+        #messages { height: 200px; overflow-y: scroll; border: 1px solid #eee; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>WhatsApp API Dashboard</h1>
+
+    <div class="card">
+        <h2>Connection Status: <span id="status" class="disconnected">disconnected</span></h2>
+        <div id="qr-container">
+            <p>Scan this QR code with WhatsApp:</p>
+            <div id="qrcode" style="display: flex; justify-content: center;"></div>
+        </div>
+        <button onclick="logout()">Logout / Reset Session</button>
+    </div>
+
+    <div class="card">
+        <h2>Send Message</h2>
+        <input type="text" id="to" placeholder="Phone (e.g. 849xxxxxxxx@s.whatsapp.net)" style="width: 100%; margin-bottom: 10px;">
+        <textarea id="message" placeholder="Message" style="width: 100%; height: 60px; margin-bottom: 10px;"></textarea>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <div class="card">
+        <h2>Incoming Messages</h2>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        const socket = io();
+        let qrcode = new QRCode(document.getElementById("qrcode"), {
+            width: 256,
+            height: 256
+        });
+
+        socket.on('status', (status) => {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = status;
+            statusEl.className = status;
+
+            if (status === 'connected') {
+                document.getElementById('qr-container').style.display = 'none';
+            }
+        });
+
+        socket.on('qr', (qr) => {
+            document.getElementById('qr-container').style.display = 'block';
+            qrcode.clear();
+            qrcode.makeCode(qr);
+        });
+
+        socket.on('message', (data) => {
+            const messagesEl = document.getElementById('messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.innerHTML = `<b>${data.from}:</b> ${data.text}`;
+            messagesEl.appendChild(msgDiv);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        });
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                location.reload();
+            }
+        }
+
+        async function sendMessage() {
+            const to = document.getElementById('to').value;
+            const message = document.getElementById('message').value;
+
+            if (!to || !message) return alert('Please fill in both fields');
+
+            const response = await fetch('/api/messages/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, message })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                alert('Message sent!');
+                document.getElementById('message').value = '';
+            } else {
+                alert('Error: ' + result.error);
+            }
+        }
+    </script>
+</body>
+</html>
