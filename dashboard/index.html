@@ -168,7 +168,7 @@
             document.getElementById('messages').innerHTML = '';
         }
 
-        function updateUIForAccount() {
+        async function updateUIForAccount() {
             const acc = accounts[selectedAccountId];
             if (!acc) return;
 
@@ -178,12 +178,27 @@
 
             if (acc.status === 'connected') {
                 document.getElementById('qr-container').style.display = 'none';
-            } else if (acc.qr) {
-                document.getElementById('qr-container').style.display = 'block';
-                qrcode.clear();
-                qrcode.makeCode(acc.qr);
             } else {
-                document.getElementById('qr-container').style.display = 'none';
+                // Try to get QR if not in memory
+                if (!acc.qr) {
+                    try {
+                        const response = await fetch(`/api/auth/${selectedAccountId}/qr`);
+                        const data = await response.json();
+                        if (data.qr) {
+                            acc.qr = data.qr;
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch QR', err);
+                    }
+                }
+
+                if (acc.qr) {
+                    document.getElementById('qr-container').style.display = 'block';
+                    qrcode.clear();
+                    qrcode.makeCode(acc.qr);
+                } else {
+                    document.getElementById('qr-container').style.display = 'none';
+                }
             }
         }
 
@@ -191,13 +206,13 @@
             const accountId = prompt('Enter a unique Account ID:');
             if (accountId) {
                 try {
-                    const response = await fetch('/api/auth/login', {
+                    const response = await fetch('/api/auth/accounts', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ accountId })
                     });
                     const result = await response.json();
-                    if (result.status === 'QR generated') {
+                    if (result.status === 'account added') {
                         accounts[accountId] = { id: accountId, status: 'disconnected' };
                         selectAccount(accountId);
                     }

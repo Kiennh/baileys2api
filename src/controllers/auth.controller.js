@@ -1,7 +1,7 @@
-const { logout, getStatus, connectToWhatsApp } = require('../whatsapp/client');
+const { logout, getStatus, connectToWhatsApp, getQR } = require('../whatsapp/client');
 const { updateAccountConfig, getAllConfig, deleteAccountConfig } = require('../utils/config');
 
-async function login(req, res) {
+async function addAccount(req, res) {
     const { accountId } = req.body;
     if (!accountId) {
         return res.status(400).json({ error: 'accountId is required' });
@@ -11,8 +11,9 @@ async function login(req, res) {
         // Initialize account if not already in config
         updateAccountConfig(accountId, {});
         const io = req.app.get('io');
-        await connectToWhatsApp(io, accountId);
-        res.json({ status: 'QR generated', accountId });
+        // This will trigger the connection and QR generation in background
+        connectToWhatsApp(io, accountId);
+        res.json({ status: 'account added', accountId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -48,11 +49,23 @@ async function deleteAccount(req, res) {
 }
 
 function getStatusInfo(req, res) {
-    const { accountId } = req.query;
+    const { accountId } = req.params;
     if (!accountId) {
         return res.status(400).json({ error: 'accountId is required' });
     }
     res.json({ status: getStatus(accountId), accountId });
+}
+
+function getQRCode(req, res) {
+    const { accountId } = req.params;
+    if (!accountId) {
+        return res.status(400).json({ error: 'accountId is required' });
+    }
+    const qr = getQR(accountId);
+    if (!qr) {
+        return res.json({ qr: null, status: getStatus(accountId) });
+    }
+    res.json({ qr, status: getStatus(accountId) });
 }
 
 function listAccounts(req, res) {
@@ -65,9 +78,10 @@ function listAccounts(req, res) {
 }
 
 module.exports = {
-    login,
+    addAccount,
     doLogout,
     deleteAccount,
     getStatusInfo,
+    getQRCode,
     listAccounts
 };
