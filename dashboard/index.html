@@ -3,15 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp API Dashboard</title>
+    <title>WhatsApp Multi-Account Dashboard</title>
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background-color: #f4f7f6; }
+        body { font-family: sans-serif; margin: 0; padding: 0; background-color: #f4f7f6; display: flex; height: 100vh; }
+        .sidebar { width: 250px; background: #075e54; color: white; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .sidebar h2 { margin-top: 0; font-size: 1.2em; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        .account-list { flex: 1; overflow-y: auto; margin-top: 10px; }
+        .account-item { padding: 10px; margin-bottom: 5px; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+        .account-item:hover { background: rgba(255,255,255,0.1); }
+        .account-item.active { background: #128c7e; font-weight: bold; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-connected { background: #25d366; }
+        .status-disconnected { background: #ff5252; }
+        .add-btn { background: #25d366; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .add-btn:hover { background: #128c7e; }
+
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
         .card { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h1, h2 { color: #333; }
+        h1, h2 { color: #333; margin-top: 0; }
         #qr-container { display: none; text-align: center; padding: 20px; }
-        #status { font-weight: bold; padding: 5px 10px; border-radius: 4px; }
+        #status-text { font-weight: bold; padding: 5px 10px; border-radius: 4px; }
         .connected { background-color: #e6f4ea; color: #1e8e3e; }
         .disconnected { background-color: #fce8e6; color: #d93025; }
         #messages { height: 300px; overflow-y: scroll; border: 1px solid #eee; padding: 10px; background: #fafafa; }
@@ -22,85 +35,222 @@
         button { background-color: #25d366; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; }
         button:hover { background-color: #128c7e; }
         button.secondary { background-color: #666; }
-        .flex { display: flex; gap: 20px; }
-        .flex > div { flex: 1; }
+        .flex { display: flex; gap: 20px; flex: 1; min-height: 0; }
+        .flex > div { flex: 1; display: flex; flex-direction: column; }
         .nav { margin-bottom: 20px; }
-        .nav a { margin-right: 15px; color: #25d366; text-decoration: none; font-weight: bold; }
-        .nav a:hover { text-decoration: underline; }
+        .nav a { margin-right: 15px; color: #075e54; text-decoration: none; font-weight: bold; }
+        #welcome-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666; }
     </style>
 </head>
 <body>
-    <div class="nav">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/api-docs" target="_blank">API Docs</a>
-    </div>
-
-    <h1>WhatsApp API Dashboard</h1>
-
-    <div class="card">
-        <h2>Connection: <span id="status" class="disconnected">disconnected</span></h2>
-        <div id="qr-container">
-            <p>Scan this QR code with WhatsApp:</p>
-            <div id="qrcode" style="display: flex; justify-content: center;"></div>
+    <div class="sidebar">
+        <h2>WhatsApp Accounts</h2>
+        <div id="account-list" class="account-list">
+            <!-- Accounts will be listed here -->
         </div>
-        <button class="secondary" onclick="logout()">Logout / Reset Session</button>
-        <button onclick="refreshGroups()">Refresh Groups</button>
+        <button class="add-btn" onclick="addAccount()">+ Add Account</button>
     </div>
 
-    <div class="card">
-        <h2>Webhook Configuration</h2>
-        <label for="webhook-url">Webhook URL</label>
-        <input type="text" id="webhook-url" placeholder="https://your-server.com/webhook">
-        <button onclick="updateWebhook()">Save Webhook URL</button>
-    </div>
+    <div class="main-content">
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/api-docs" target="_blank">API Docs</a>
+        </div>
 
-    <div class="flex">
-        <div>
+        <div id="welcome-screen">
+            <h1>Welcome to WhatsApp API Dashboard</h1>
+            <p>Select an account from the sidebar or add a new one.</p>
+        </div>
+
+        <div id="account-detail" style="display: none;">
+            <h1 id="active-account-id">Account: -</h1>
+
             <div class="card">
-                <h2>Send Message</h2>
-                <label for="to">Recipient (Direct or Select Group)</label>
-                <input type="text" id="to" placeholder="Phone (e.g. 849xxxxxxxx@s.whatsapp.net) or Group ID">
-
-                <label for="group-select">OR Select Group</label>
-                <select id="group-select" onchange="document.getElementById('to').value = this.value">
-                    <option value="">-- Select a group --</option>
-                </select>
-
-                <label for="message">Message</label>
-                <textarea id="message" placeholder="Type your message here..."></textarea>
-                <button onclick="sendMessage()">Send Message</button>
+                <h2>Connection: <span id="status-text" class="disconnected">disconnected</span></h2>
+                <div id="qr-container">
+                    <p>Scan this QR code with WhatsApp:</p>
+                    <div id="qrcode" style="display: flex; justify-content: center;"></div>
+                </div>
+                <button class="secondary" onclick="logout()">Logout / Reset Session</button>
+                <button onclick="refreshGroups()">Refresh Groups</button>
             </div>
-        </div>
 
-        <div>
             <div class="card">
-                <h2>Live Messages</h2>
-                <div id="messages"></div>
+                <h2>Webhook Configuration</h2>
+                <label for="webhook-url">Webhook URL</label>
+                <input type="text" id="webhook-url" placeholder="https://your-server.com/webhook">
+                <button onclick="updateWebhook()">Save Webhook URL</button>
+            </div>
+
+            <div class="flex">
+                <div>
+                    <div class="card">
+                        <h2>Send Message</h2>
+                        <label for="to">Recipient (Direct or Select Group)</label>
+                        <input type="text" id="to" placeholder="Phone (e.g. 849xxxxxxxx@s.whatsapp.net) or Group ID">
+
+                        <label for="group-select">OR Select Group</label>
+                        <select id="group-select" onchange="document.getElementById('to').value = this.value">
+                            <option value="">-- Select a group --</option>
+                        </select>
+
+                        <label for="message">Message</label>
+                        <textarea id="message" placeholder="Type your message here..."></textarea>
+                        <button onclick="sendMessage()">Send Message</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+                        <h2>Live Messages</h2>
+                        <div id="messages"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         const socket = io();
+        let selectedAccountId = null;
+        const accounts = {};
+
         let qrcode = new QRCode(document.getElementById("qrcode"), {
             width: 256,
             height: 256
         });
 
-        // Initialize Webhook Settings
-        async function fetchWebhookSettings() {
+        async function fetchAccounts() {
             try {
-                const response = await fetch('/api/settings/webhook');
+                const response = await fetch('/api/auth/accounts');
                 const data = await response.json();
-                if (data.webhookUrl) {
-                    document.getElementById('webhook-url').value = data.webhookUrl;
+                data.accounts.forEach(acc => {
+                    accounts[acc.id] = acc;
+                });
+                renderAccountList();
+            } catch (err) {
+                console.error('Failed to fetch accounts', err);
+            }
+        }
+
+        function renderAccountList() {
+            const list = document.getElementById('account-list');
+            list.innerHTML = '';
+            Object.values(accounts).forEach(acc => {
+                const item = document.createElement('div');
+                item.className = 'account-item' + (selectedAccountId === acc.id ? ' active' : '');
+                item.onclick = () => selectAccount(acc.id);
+
+                const statusDot = `<span class="status-dot ${acc.status === 'connected' ? 'status-connected' : 'status-disconnected'}"></span>`;
+                item.innerHTML = `<div>${statusDot} ${acc.id}</div>`;
+                list.appendChild(item);
+            });
+        }
+
+        async function selectAccount(accountId) {
+            selectedAccountId = accountId;
+            document.getElementById('welcome-screen').style.display = 'none';
+            document.getElementById('account-detail').style.display = 'block';
+            document.getElementById('active-account-id').innerText = 'Account: ' + accountId;
+
+            renderAccountList();
+            updateUIForAccount();
+            fetchWebhookSettings();
+            refreshGroups();
+
+            // Clear messages for new selection (optional, or keep a log per account)
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        function updateUIForAccount() {
+            const acc = accounts[selectedAccountId];
+            if (!acc) return;
+
+            const statusEl = document.getElementById('status-text');
+            statusEl.innerText = acc.status;
+            statusEl.className = acc.status;
+
+            if (acc.status === 'connected') {
+                document.getElementById('qr-container').style.display = 'none';
+            } else if (acc.qr) {
+                document.getElementById('qr-container').style.display = 'block';
+                qrcode.clear();
+                qrcode.makeCode(acc.qr);
+            } else {
+                document.getElementById('qr-container').style.display = 'none';
+            }
+        }
+
+        async function addAccount() {
+            const accountId = prompt('Enter a unique Account ID:');
+            if (accountId) {
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ accountId })
+                    });
+                    const result = await response.json();
+                    if (result.status === 'QR generated') {
+                        accounts[accountId] = { id: accountId, status: 'disconnected' };
+                        selectAccount(accountId);
+                    }
+                } catch (err) {
+                    alert('Failed to add account');
                 }
+            }
+        }
+
+        socket.on('status', (data) => {
+            if (accounts[data.accountId]) {
+                accounts[data.accountId].status = data.status;
+                if (data.status === 'connected') accounts[data.accountId].qr = null;
+                renderAccountList();
+                if (selectedAccountId === data.accountId) {
+                    updateUIForAccount();
+                    if (data.status === 'connected') refreshGroups();
+                }
+            }
+        });
+
+        socket.on('qr', (data) => {
+            if (accounts[data.accountId]) {
+                accounts[data.accountId].qr = data.qr;
+                if (selectedAccountId === data.accountId) {
+                    updateUIForAccount();
+                }
+            }
+        });
+
+        socket.on('message', (data) => {
+            if (selectedAccountId === data.accountId) {
+                const messagesEl = document.getElementById('messages');
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'message-item';
+
+                let label = `<b>${data.from}</b>`;
+                if (data.isGroup) {
+                    label += ` <span class="group-tag">Group</span>`;
+                    if (data.participant) {
+                        label += ` <br><small>By: ${data.participant}</small>`;
+                    }
+                }
+
+                msgDiv.innerHTML = `${label}: ${data.text}`;
+                messagesEl.prepend(msgDiv);
+            }
+        });
+
+        async function fetchWebhookSettings() {
+            if (!selectedAccountId) return;
+            try {
+                const response = await fetch(`/api/settings/webhook?accountId=${selectedAccountId}`);
+                const data = await response.json();
+                document.getElementById('webhook-url').value = data.webhookUrl || '';
             } catch (err) {
                 console.error('Failed to fetch webhook settings', err);
             }
         }
-
-        fetchWebhookSettings();
 
         async function updateWebhook() {
             const webhookUrl = document.getElementById('webhook-url').value;
@@ -108,7 +258,7 @@
                 const response = await fetch('/api/settings/webhook', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ webhookUrl })
+                    body: JSON.stringify({ accountId: selectedAccountId, webhookUrl })
                 });
                 const result = await response.json();
                 if (result.success) {
@@ -118,61 +268,30 @@
                 }
             } catch (err) {
                 alert('Failed to update webhook URL');
-                console.error(err);
             }
         }
 
-        socket.on('status', (status) => {
-            const statusEl = document.getElementById('status');
-            statusEl.innerText = status;
-            statusEl.className = status;
-
-            if (status === 'connected') {
-                document.getElementById('qr-container').style.display = 'none';
-                refreshGroups();
-            } else {
-                // Clear groups if disconnected
-                document.getElementById('group-select').innerHTML = '<option value="">-- Select a group --</option>';
-            }
-        });
-
-        socket.on('qr', (qr) => {
-            document.getElementById('qr-container').style.display = 'block';
-            qrcode.clear();
-            qrcode.makeCode(qr);
-        });
-
-        socket.on('message', (data) => {
-            const messagesEl = document.getElementById('messages');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'message-item';
-
-            let label = `<b>${data.from}</b>`;
-            if (data.isGroup) {
-                label += ` <span class="group-tag">Group</span>`;
-                if (data.participant) {
-                    label += ` <br><small>By: ${data.participant}</small>`;
-                }
-            }
-
-            msgDiv.innerHTML = `${label}: ${data.text}`;
-            messagesEl.prepend(msgDiv); // Newest on top
-        });
-
         async function logout() {
             if (confirm('Are you sure you want to logout?')) {
-                await fetch('/api/auth/logout', { method: 'POST' });
-                location.reload();
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId: selectedAccountId })
+                });
+                delete accounts[selectedAccountId];
+                selectedAccountId = null;
+                document.getElementById('account-detail').style.display = 'none';
+                document.getElementById('welcome-screen').style.display = 'flex';
+                renderAccountList();
             }
         }
 
         async function refreshGroups() {
+            if (!selectedAccountId || accounts[selectedAccountId].status !== 'connected') return;
             try {
-                const response = await fetch('/api/groups/list');
+                const response = await fetch(`/api/groups/list?accountId=${selectedAccountId}`);
                 const data = await response.json();
                 const select = document.getElementById('group-select');
-
-                // Keep the first option
                 select.innerHTML = '<option value="">-- Select a group --</option>';
 
                 if (data.groups) {
@@ -196,7 +315,9 @@
 
             const isGroup = to.endsWith('@g.us');
             const endpoint = isGroup ? '/api/groups/send' : '/api/messages/send';
-            const body = isGroup ? { groupId: to, message } : { to, message };
+            const body = isGroup ?
+                { accountId: selectedAccountId, groupId: to, message } :
+                { accountId: selectedAccountId, to, message };
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -212,6 +333,8 @@
                 alert('Error: ' + result.error);
             }
         }
+
+        fetchAccounts();
     </script>
 </body>
 </html>

@@ -8,6 +8,7 @@ const swaggerDocument = require('../docs/swagger.json');
 
 const { connectToWhatsApp } = require('./whatsapp/client');
 const { initWebSocket } = require('./websocket/socket');
+const { getAllConfig } = require('./utils/config');
 
 const authRoutes = require('./routes/auth.routes');
 const messageRoutes = require('./routes/message.routes');
@@ -17,6 +18,9 @@ const webhookRoutes = require('./routes/webhook.routes');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Share io instance with controllers
+app.set('io', io);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -46,10 +50,17 @@ server.listen(PORT, async () => {
     // Init WebSocket
     initWebSocket(io);
 
-    // Start WhatsApp client
-    try {
-        await connectToWhatsApp(io);
-    } catch (error) {
-        console.error('Failed to connect to WhatsApp:', error);
+    // Initialize all configured accounts
+    const config = getAllConfig();
+    const accountIds = Object.keys(config.accounts);
+    console.log(`Initializing ${accountIds.length} accounts...`);
+
+    for (const accountId of accountIds) {
+        try {
+            await connectToWhatsApp(io, accountId);
+            console.log(`Account ${accountId} initialized`);
+        } catch (error) {
+            console.error(`Failed to initialize account ${accountId}:`, error);
+        }
     }
 });

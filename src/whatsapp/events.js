@@ -1,8 +1,8 @@
 const axios = require('axios');
-const { getConfig } = require('../utils/config');
+const { getAccountConfig } = require('../utils/config');
 require('dotenv').config();
 
-async function handleMessages(m, sock, io) {
+async function handleMessages(m, sock, io, accountId) {
     if (m.type !== 'notify') return;
 
     for (const msg of m.messages) {
@@ -12,11 +12,12 @@ async function handleMessages(m, sock, io) {
             const isGroup = from.endsWith('@g.us');
 
             if (text) {
-                console.log(`Received ${isGroup ? 'group' : 'direct'} message from ${from}: ${text}`);
+                console.log(`[${accountId}] Received ${isGroup ? 'group' : 'direct'} message from ${from}: ${text}`);
 
                 // Emit to dashboard
                 if (io) {
                     io.emit('message', {
+                        accountId,
                         from,
                         text,
                         isGroup,
@@ -25,12 +26,13 @@ async function handleMessages(m, sock, io) {
                 }
 
                 // Send to webhook
-                const config = getConfig();
+                const config = getAccountConfig(accountId);
                 const webhookUrl = config.webhookUrl;
                 if (webhookUrl) {
                     try {
                         await axios.post(webhookUrl, {
                             event: 'message.received',
+                            accountId: accountId,
                             data: {
                                 from,
                                 isGroup,
@@ -39,7 +41,7 @@ async function handleMessages(m, sock, io) {
                             }
                         });
                     } catch (error) {
-                        console.error('Webhook error:', error.message);
+                        console.error(`[${accountId}] Webhook error:`, error.message);
                     }
                 }
             }

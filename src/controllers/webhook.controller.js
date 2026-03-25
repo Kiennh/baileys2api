@@ -1,22 +1,26 @@
-const { getConfig, updateConfig } = require('../utils/config');
+const { getAccountConfig, updateAccountConfig } = require('../utils/config');
 
 function getSettings(req, res) {
+    const { accountId } = req.query;
+    if (!accountId) {
+        return res.status(400).json({ error: 'accountId is required' });
+    }
     try {
-        const config = getConfig();
-        res.json({ webhookUrl: config.webhookUrl });
+        const config = getAccountConfig(accountId);
+        res.json({ webhookUrl: config.webhookUrl, accountId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 }
 
 function updateSettings(req, res) {
+    const { accountId, webhookUrl } = req.body;
+    if (!accountId || typeof webhookUrl !== 'string') {
+        return res.status(400).json({ error: 'accountId and a valid webhookUrl are required' });
+    }
     try {
-        const { webhookUrl } = req.body;
-        if (typeof webhookUrl !== 'string') {
-            return res.status(400).json({ error: 'webhookUrl must be a string' });
-        }
-        const updatedConfig = updateConfig({ webhookUrl });
-        res.json({ success: true, webhookUrl: updatedConfig.webhookUrl });
+        const updatedConfig = updateAccountConfig(accountId, { webhookUrl });
+        res.json({ success: true, webhookUrl: updatedConfig.webhookUrl, accountId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
