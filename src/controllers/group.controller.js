@@ -1,19 +1,24 @@
 const { getGroups, sendMessage } = require('../whatsapp/client');
 
 async function list(req, res) {
+    const { accountId } = req.query;
+    if (!accountId) {
+        return res.status(400).json({ error: 'accountId is required' });
+    }
+
     try {
-        const groups = await getGroups();
-        res.json({ groups });
+        const groups = await getGroups(accountId);
+        res.json({ groups, accountId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 }
 
 async function sendGroupMessage(req, res) {
-    const { groupId, message } = req.body;
+    const { accountId, groupId, message } = req.body;
 
-    if (!groupId || !message) {
-        return res.status(400).json({ error: 'groupId and message are required' });
+    if (!accountId || !groupId || !message) {
+        return res.status(400).json({ error: 'accountId, groupId and message are required' });
     }
 
     if (!groupId.endsWith('@g.us')) {
@@ -21,8 +26,8 @@ async function sendGroupMessage(req, res) {
     }
 
     try {
-        await sendMessage(groupId, message);
-        res.json({ success: true });
+        await sendMessage(accountId, groupId, message);
+        res.json({ success: true, accountId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -1,33 +1,38 @@
 const { test, expect } = require('@playwright/test');
 
-test('Verify dashboard has webhook configuration and API docs link', async ({ page }) => {
+test('Verify dashboard has sidebar and Add Account button', async ({ page }) => {
   await page.goto('http://localhost:3000/dashboard');
+  await expect(page.locator('.sidebar')).toBeVisible();
+  const addBtn = page.locator('button:has-text("Add Account")');
+  await expect(addBtn).toBeVisible();
+});
 
-  // Check for the Webhook Configuration card
-  await expect(page.locator('h2', { hasText: 'Webhook Configuration' })).toBeVisible();
+test('Verify adding and deleting an account', async ({ page }) => {
+  await page.goto('http://localhost:3000/dashboard');
+  const accountId = 'test_acc_to_delete';
 
-  // Check for the Webhook URL input field
-  const webhookInput = page.locator('#webhook-url');
-  await expect(webhookInput).toBeVisible();
-
-  // Check for the API Docs link in navigation
-  const apiDocsLink = page.locator('a', { hasText: 'API Docs' });
-  await expect(apiDocsLink).toBeVisible();
-
-  // Test updating the webhook URL
-  const testUrl = 'https://example.com/webhook';
-  await webhookInput.fill(testUrl);
-
-  // Handle the alert
+  // Handle prompt for add and confirm for delete
   page.on('dialog', async dialog => {
-    await dialog.accept();
+    if (dialog.type() === 'prompt') {
+      await dialog.accept(accountId);
+    } else if (dialog.type() === 'confirm') {
+      await dialog.accept();
+    } else if (dialog.type() === 'alert') {
+      await dialog.accept();
+    }
   });
 
-  await page.click('button:has-text("Save Webhook URL")');
+  // Add
+  await page.click('button:has-text("Add Account")');
+  await expect(page.locator('#active-account-id')).toContainText(accountId);
+  await expect(page.locator(`.account-item:has-text("${accountId}")`)).toBeVisible();
 
-  // Refresh and check if it persists
-  await page.reload();
-  await expect(webhookInput).toHaveValue(testUrl);
+  // Delete
+  await page.click('button:has-text("Delete Account")');
+
+  // Should go back to welcome screen
+  await expect(page.locator('#welcome-screen')).toBeVisible();
+  await expect(page.locator(`.account-item:has-text("${accountId}")`)).not.toBeVisible();
 });
 
 test('Verify API Docs page loads', async ({ page }) => {

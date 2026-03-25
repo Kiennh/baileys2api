@@ -4,10 +4,10 @@ const path = require('path');
 const configPath = path.join(__dirname, '../../config.json');
 
 const defaultConfig = {
-    webhookUrl: process.env.WEBHOOK_URL || ''
+    accounts: {}
 };
 
-function getConfig() {
+function getAllConfig() {
     if (!fs.existsSync(configPath)) {
         return defaultConfig;
     }
@@ -20,19 +20,42 @@ function getConfig() {
     }
 }
 
-function updateConfig(newConfig) {
+function getAccountConfig(accountId) {
+    const config = getAllConfig();
+    return config.accounts[accountId] || { webhookUrl: '' };
+}
+
+function updateAccountConfig(accountId, newAccountConfig) {
     try {
-        const currentConfig = getConfig();
-        const updatedConfig = { ...currentConfig, ...newConfig };
-        fs.writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2));
-        return updatedConfig;
+        const config = getAllConfig();
+        config.accounts[accountId] = {
+            ...(config.accounts[accountId] || { webhookUrl: '' }),
+            ...newAccountConfig
+        };
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        return config.accounts[accountId];
     } catch (error) {
         console.error('Error updating config file:', error);
         throw error;
     }
 }
 
+function deleteAccountConfig(accountId) {
+    try {
+        const config = getAllConfig();
+        if (config.accounts[accountId]) {
+            delete config.accounts[accountId];
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        }
+    } catch (error) {
+        console.error('Error deleting account config:', error);
+        throw error;
+    }
+}
+
 module.exports = {
-    getConfig,
-    updateConfig
+    getAllConfig,
+    getAccountConfig,
+    updateAccountConfig,
+    deleteAccountConfig
 };

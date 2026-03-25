@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "WhatsApp API",
-    "version": "1.0.0",
-    "description": "API documentation for the WhatsApp Baileys integration"
+    "title": "WhatsApp Multi-Account API",
+    "version": "1.2.0",
+    "description": "API documentation for the WhatsApp Baileys integration with Multi-Account support"
   },
   "servers": [
     {
@@ -11,33 +11,99 @@
     }
   ],
   "paths": {
-    "/auth/login": {
-      "post": {
-        "summary": "Generate QR code",
+    "/auth/accounts": {
+      "get": {
+        "summary": "List all accounts",
         "responses": {
-          "200": {
-            "description": "QR generated"
+          "200": { "description": "List of accounts" }
+        }
+      },
+      "post": {
+        "summary": "Add a new account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "accountId": { "type": "string", "example": "my_account_1" }
+                }
+              }
+            }
           }
+        },
+        "responses": {
+          "200": { "description": "Account added" }
         }
       }
     },
     "/auth/logout": {
       "post": {
-        "summary": "Logout and reset session",
-        "responses": {
-          "200": {
-            "description": "Logged out"
+        "summary": "Logout account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "accountId": { "type": "string", "example": "my_account_1" }
+                }
+              }
+            }
           }
+        },
+        "responses": {
+          "200": { "description": "Logged out" }
         }
       }
     },
-    "/auth/status": {
+    "/auth/{accountId}": {
+      "delete": {
+        "summary": "Delete account and all session data",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Deleted" }
+        }
+      }
+    },
+    "/auth/{accountId}/status": {
       "get": {
         "summary": "Get connection status",
-        "responses": {
-          "200": {
-            "description": "Current status"
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
           }
+        ],
+        "responses": {
+          "200": { "description": "Current status" }
+        }
+      }
+    },
+    "/auth/{accountId}/qr": {
+      "get": {
+        "summary": "Get current QR code for account",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "QR code data" }
         }
       }
     },
@@ -51,6 +117,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "accountId": { "type": "string", "example": "my_account_1" },
                   "to": { "type": "string", "example": "849xxxxxxxx@s.whatsapp.net" },
                   "message": { "type": "string", "example": "Hello" }
                 }
@@ -66,6 +133,14 @@
     "/groups/list": {
       "get": {
         "summary": "List all participating groups",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "responses": {
           "200": { "description": "List of groups" }
         }
@@ -81,6 +156,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "accountId": { "type": "string", "example": "my_account_1" },
                   "groupId": { "type": "string", "example": "123456789@g.us" },
                   "message": { "type": "string", "example": "Hello group" }
                 }
@@ -96,6 +172,14 @@
     "/settings/webhook": {
       "get": {
         "summary": "Get webhook configuration",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "responses": {
           "200": { "description": "Webhook URL" }
         }
@@ -109,6 +193,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "accountId": { "type": "string", "example": "my_account_1" },
                   "webhookUrl": { "type": "string", "example": "https://myserver.com/callback" }
                 }
               }

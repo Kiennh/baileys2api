@@ -1,76 +1,28 @@
-# 📦 WhatsApp API Server (Baileys) + Dashboard
+# 📦 WhatsApp API Server (Baileys) + Multi-Account Dashboard
 
 A full-featured WhatsApp integration service using **Baileys** that provides:
-- REST API to send messages
-- Webhook for incoming messages
-- Real-time dashboard (QR login, chat monitoring)
-- WebSocket (Socket.IO) for live updates
+- REST API to manage multiple accounts
+- Webhook for incoming messages (per account)
+- Multi-account dashboard (QR login, switching between accounts)
+- WebSocket (Socket.IO) for live updates across all accounts
 
 ---
 
 # 🚀 Features
 
 ## Core
-- Connect to WhatsApp via QR code (multi-device)
+- **Multi-Account Support**: Manage multiple WhatsApp sessions concurrently.
+- Connect via QR code (multi-device)
 - Send messages via REST API
-- Receive messages via webhook
-- Session persistence (no need to re-scan QR)
+- Receive messages via webhook (with `accountId` in payload)
+- Session persistence (sessions stored per account ID)
 
 ## Dashboard
-- QR code login UI
+- Sidebar with account list and status indicators
+- Add New Account button
+- Delete Account button (clears session and config)
 - Connection status (connected/disconnected)
-- Send messages from UI
-- Real-time incoming messages
-
-## Developer Friendly
-- Modular architecture
-- Easy to extend (bots, CRM, AI)
-- Clean REST + WebSocket design
-
----
-
-# 🧱 Tech Stack
-
-## Backend
-- Node.js (>= 18)
-- Express.js
-- Baileys (@whiskeysockets/baileys)
-- Socket.IO
-- Axios
-
-## Frontend
-- HTML / React (optional)
-- Socket.IO client
-- QRCode.js
-
----
-
-# 📁 Project Structure
-
-project-root/
-├── src/
-│   ├── app.js
-│   ├── websocket/
-│   │   └── socket.js
-│   ├── whatsapp/
-│   │   ├── client.js
-│   │   ├── events.js
-│   │   └── session.js
-│   ├── routes/
-│   │   ├── auth.routes.js
-│   │   ├── message.routes.js
-│   │   └── webhook.routes.js
-│   ├── controllers/
-│   ├── services/
-│   └── config/
-│
-├── dashboard/
-│   └── index.html
-│
-├── sessions/
-├── .env
-├── package.json
-└── README.md
+- Send messages and view live incoming messages for the selected account
 
 ---
 
@@ -84,11 +36,7 @@ cd project-root
 npm install
 
 ## 3. Environment variables
-
-Create .env file:
-
-PORT=3000
-WEBHOOK_URL=http://localhost:3000/api/webhook
+Create .env file (optional, default PORT is 3000).
 
 ---
 
@@ -101,171 +49,68 @@ http://localhost:3000
 
 ---
 
-# 🔐 WhatsApp Login (QR Flow)
+# 🔐 Multi-Account Flow
 
-## Step 1
-Open dashboard:
-dashboard/index.html
+## Step 1: Add Account
+Open dashboard and click "+ Add Account". Enter a unique Account ID.
 
-## Step 2
-Scan QR code using WhatsApp:
+## Step 2: Login (Scan QR)
+A QR code will be generated for that account. Scan it using WhatsApp:
 - WhatsApp → Linked Devices → Link a Device
 
-## Step 3
-After scanning:
-- Status becomes connected
-- Session is saved in /sessions
+## Step 3: Manage
+Once connected, you can switch between accounts in the sidebar. Each account has its own Webhook configuration and message history.
 
 ---
 
 # 🌐 API Documentation
 
-## Base URL
-http://localhost:3000/api
+Interactive API Docs available at:
+http://localhost:3000/api-docs
 
----
+## Key Endpoints
 
-## Send Message
+### List Accounts
+`GET /api/auth/accounts`
 
-POST /messages/send
-
-Request:
+### Send Message
+`POST /api/messages/send`
+Request Body:
+```json
 {
+  "accountId": "my_account_1",
   "to": "849xxxxxxxxx@s.whatsapp.net",
-  "message": "Hello from API"
+  "message": "Hello"
 }
-
-Response:
-{
-  "success": true
-}
-
----
-
-## Login (Generate QR)
-
-POST /auth/login
-
-Response:
-{
-  "status": "QR generated"
-}
-
----
-
-## Logout (Reset Session)
-
-POST /auth/logout
-
-Response:
-{
-  "status": "logged out"
-}
-
----
-
-## Webhook Receiver
-
-POST /webhook
-
-Payload example:
-{
-  "event": "message.received",
-  "data": {
-    "from": "849xxxx@s.whatsapp.net",
-    "message": {
-      "conversation": "Hello"
-    }
-  }
-}
+```
 
 ---
 
 # 🔌 WebSocket Events (Real-time)
 
-- qr → QR code string
-- status → connected / disconnected
-- message → incoming message
-
----
-
-# 🖥️ Dashboard Usage
-
-Open:
-dashboard/index.html
-
-Features:
-- Scan QR to login
-- See connection status
-- Send messages
-- View incoming messages in real-time
+- `qr`: `{ accountId, qr }`
+- `status`: `{ accountId, status }`
+- `message`: `{ accountId, from, text, ... }`
 
 ---
 
 # 🔄 Webhook Integration
 
-Set your webhook in .env:
-
-WEBHOOK_URL=https://your-domain.com/webhook
-
-Events sent:
-- message.received
-
----
-
-# 🧪 Testing
-
-curl -X POST http://localhost:3000/api/messages/send \
--H "Content-Type: application/json" \
--d '{
-  "to": "849xxxxxxxxx@s.whatsapp.net",
-  "message": "Test message"
-}'
+Configure a unique webhook URL for each account in the dashboard.
+Payload example:
+```json
+{
+  "event": "message.received",
+  "accountId": "my_account_1",
+  "data": {
+    "from": "849xxxx@s.whatsapp.net",
+    "message": { ... }
+  }
+}
+```
 
 ---
 
-# 🔒 Notes & Limitations
-
-- Uses WhatsApp Web (not official API)
-- May break if WhatsApp updates protocol
-- Avoid spam (risk of account ban)
-
----
-
-# 🧠 Future Improvements
-
-- Multi-session support
-- Redis / DB storage
-- Queue system (BullMQ)
-- Multi-tenant SaaS
-- AI chatbot integration
-
----
-
-# 🐳 Docker (Optional)
-
-Dockerfile:
-
-FROM node:18
-WORKDIR /app
-COPY . .
-RUN npm install
-CMD ["node", "src/app.js"]
-
-Run:
-
-docker build -t whatsapp-api .
-docker run -p 3000:3000 whatsapp-api
-
----
-
-# 🤝 Contributing
-
-PRs welcome.
-
----
-
-# 📄 License
-
-MIT
-
+# 🔒 Notes
+- Sessions are stored in `sessions/{accountId}`.
+- Use the Dashboard to safely delete accounts and their session data.

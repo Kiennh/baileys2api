@@ -10,17 +10,24 @@ const path = require('path');
 const { Boom } = require('@hapi/boom');
 const fs = require('fs');
 
-let sock;
-let qr;
-let status = 'disconnected';
+const sessions = {};
+const qrCodes = {};
+const statuses = {};
 
 const logger = pino({ level: 'info' });
 
-async function connectToWhatsApp(io) {
-    const { state, saveCreds } = await useMultiFileAuthState(path.join(__dirname, '../../sessions'));
-    const { version, isLatest } = await fetchLatestBaileysVersion();
+async function connectToWhatsApp(io, accountId) {
+    if (!accountId) throw new Error('accountId is required');
 
-    sock = makeWASocket({
+    const sessionPath = path.join(__dirname, '../../sessions', accountId);
+    if (!fs.existsSync(sessionPath)) {
+        fs.mkdirSync(sessionPath, { recursive: true });
+    }
+
+    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+    const { version } = await fetchLatestBaileysVersion();
+
+    const sock = makeWASocket({
         version,
         printQRInTerminal: true,
         auth: {
@@ -30,77 +37,91 @@ async function connectToWhatsApp(io) {
         logger,
     });
 
+    sessions[accountId] = sock;
+    statuses[accountId] = 'disconnected';
+
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr: newQr } = update;
 
         if (newQr) {
-            qr = newQr;
-            if (io) io.emit('qr', qr);
+            qrCodes[accountId] = newQr;
+            if (io) io.emit('qr', { accountId, qr: newQr });
         }
 
         if (connection === 'close') {
             const shouldReconnect = (lastDisconnect.error instanceof Boom) ?
                 lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
 
-            status = 'disconnected';
-            if (io) io.emit('status', status);
+            statuses[accountId] = 'disconnected';
+            if (io) io.emit('status', { accountId, status: 'disconnected' });
 
             if (shouldReconnect) {
-                connectToWhatsApp(io);
+                connectToWhatsApp(io, accountId);
+            } else {
+                delete sessions[accountId];
+                delete qrCodes[accountId];
+                delete statuses[accountId];
             }
         } else if (connection === 'open') {
-            status = 'connected';
-            qr = null;
-            if (io) io.emit('status', status);
-            console.log('Opened connection');
+            statuses[accountId] = 'connected';
+            qrCodes[accountId] = null;
+            if (io) io.emit('status', { accountId, status: 'connected' });
+            console.log(`Opened connection for account: ${accountId}`);
         }
     });
 
     // Handle messages
     const { handleMessages } = require('./events');
     sock.ev.on('messages.upsert', async (m) => {
-        await handleMessages(m, sock, io);
+        await handleMessages(m, sock, io, accountId);
     });
 
     return sock;
 }
 
-function getStatus() {
-    return status;
+function getStatus(accountId) {
+    return statuses[accountId] || 'disconnected';
 }
 
-function getQR() {
-    return qr;
+function getQR(accountId) {
+    return qrCodes[accountId];
 }
 
-async function logout() {
+async function logout(accountId) {
+    const sock = sessions[accountId];
     if (sock) {
         await sock.logout();
-        sock = null;
-        status = 'disconnected';
-        qr = null;
-        // Clear session folder
-        const sessionPath = path.join(__dirname, '../../sessions');
+        delete sessions[accountId];
+        statuses[accountId] = 'disconnected';
+        qrCodes[accountId] = null;
+
+        const sessionPath = path.join(__dirname, '../../sessions', accountId);
         if (fs.existsSync(sessionPath)) {
             fs.rmSync(sessionPath, { recursive: true, force: true });
         }
     }
 }
 
-async function sendMessage(to, message) {
-    if (!sock || status !== 'connected') {
-        throw new Error('WhatsApp not connected');
+async function sendMessage(accountId, to, message) {
+    const sock = sessions[accountId];
+    if (!sock || statuses[accountId] !== 'connected') {
+        throw new Error(`WhatsApp account ${accountId} not connected`);
     }
     return await sock.sendMessage(to, { text: message });
 }
 
-async function getGroups() {
-    if (!sock || status !== "connected") {
-        throw new Error("WhatsApp not connected");
+async function getGroups(accountId) {
+    const sock = sessions[accountId];
+    if (!sock || statuses[accountId] !== 'connected') {
+        throw new Error(`WhatsApp account ${accountId} not connected`);
     }
     return await sock.groupFetchAllParticipating();
+}
+
+function getAllSessions() {
+    return Object.keys(sessions);
 }
 
 module.exports = {
@@ -110,5 +131,6 @@ module.exports = {
     getQR,
     logout,
     sendMessage,
-    getSocket: () => sock
+    getSocket: (accountId) => sessions[accountId],
+    getAllSessions
 };
