@@ -1,5 +1,5 @@
 const { logout, getStatus, connectToWhatsApp } = require('../whatsapp/client');
-const { updateAccountConfig, getAllConfig } = require('../utils/config');
+const { updateAccountConfig, getAllConfig, deleteAccountConfig } = require('../utils/config');
 
 async function login(req, res) {
     const { accountId } = req.body;
@@ -32,6 +32,21 @@ async function doLogout(req, res) {
     }
 }
 
+async function deleteAccount(req, res) {
+    const { accountId } = req.params;
+    if (!accountId) {
+        return res.status(400).json({ error: 'accountId is required' });
+    }
+
+    try {
+        await logout(accountId);
+        deleteAccountConfig(accountId);
+        res.json({ status: 'deleted', accountId });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
 function getStatusInfo(req, res) {
     const { accountId } = req.query;
     if (!accountId) {
@@ -52,6 +67,7 @@ function listAccounts(req, res) {
 module.exports = {
     login,
     doLogout,
+    deleteAccount,
     getStatusInfo,
     listAccounts
 };

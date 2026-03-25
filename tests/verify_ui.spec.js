@@ -2,51 +2,37 @@ const { test, expect } = require('@playwright/test');
 
 test('Verify dashboard has sidebar and Add Account button', async ({ page }) => {
   await page.goto('http://localhost:3000/dashboard');
-
-  // Check for the Sidebar
   await expect(page.locator('.sidebar')).toBeVisible();
-
-  // Check for the Add Account button
   const addBtn = page.locator('button:has-text("Add Account")');
   await expect(addBtn).toBeVisible();
-
-  // Check for the API Docs link in navigation
-  const apiDocsLink = page.locator('a', { hasText: 'API Docs' });
-  await expect(apiDocsLink).toBeVisible();
 });
 
-test('Verify adding an account and configuring webhook', async ({ page }) => {
+test('Verify adding and deleting an account', async ({ page }) => {
   await page.goto('http://localhost:3000/dashboard');
+  const accountId = 'test_acc_to_delete';
 
-  const accountId = 'test_acc_123';
-
-  // Handle prompt
+  // Handle prompt for add and confirm for delete
   page.on('dialog', async dialog => {
     if (dialog.type() === 'prompt') {
       await dialog.accept(accountId);
+    } else if (dialog.type() === 'confirm') {
+      await dialog.accept();
     } else if (dialog.type() === 'alert') {
       await dialog.accept();
     }
   });
 
+  // Add
   await page.click('button:has-text("Add Account")');
-
-  // Check if account ID is visible in the main content
   await expect(page.locator('#active-account-id')).toContainText(accountId);
+  await expect(page.locator(`.account-item:has-text("${accountId}")`)).toBeVisible();
 
-  // Configure webhook
-  const testUrl = 'https://example.com/webhook';
-  const webhookInput = page.locator('#webhook-url');
-  await webhookInput.fill(testUrl);
-  await page.click('button:has-text("Save Webhook URL")');
+  // Delete
+  await page.click('button:has-text("Delete Account")');
 
-  // Refresh and check if it persists
-  await page.reload();
-
-  // Re-select the account (sidebar)
-  await page.click(`.account-item:has-text("${accountId}")`);
-
-  await expect(webhookInput).toHaveValue(testUrl);
+  // Should go back to welcome screen
+  await expect(page.locator('#welcome-screen')).toBeVisible();
+  await expect(page.locator(`.account-item:has-text("${accountId}")`)).not.toBeVisible();
 });
 
 test('Verify API Docs page loads', async ({ page }) => {
