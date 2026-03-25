@@ -92,7 +92,9 @@ function getQR(accountId) {
 async function logout(accountId) {
     const sock = sessions[accountId];
     if (sock) {
-        await sock.logout();
+        try {
+            await sock.logout();
+        } catch (e) {}
         delete sessions[accountId];
         statuses[accountId] = 'disconnected';
         qrCodes[accountId] = null;
@@ -124,6 +126,10 @@ function getAllSessions() {
     return Object.keys(sessions);
 }
 
+function isAuthenticated(accountId) {
+    return statuses[accountId] === 'connected';
+}
+
 module.exports = {
     getGroups,
     connectToWhatsApp,
@@ -132,5 +138,6 @@ module.exports = {
     logout,
     sendMessage,
     getSocket: (accountId) => sessions[accountId],
-    getAllSessions
+    getAllSessions,
+    isAuthenticated
 };

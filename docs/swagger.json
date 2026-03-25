@@ -2,114 +2,172 @@
   "openapi": "3.0.0",
   "info": {
     "title": "WhatsApp Multi-Account API",
-    "version": "1.2.0",
-    "description": "API documentation for the WhatsApp Baileys integration with Multi-Account support"
+    "version": "1.3.0",
+    "description": "Standardized API for WhatsApp Baileys integration"
   },
   "servers": [
     {
-      "url": "http://localhost:3000/api"
+      "url": "http://localhost:3000"
     }
   ],
+  "tags": [
+    { "name": "Accounts", "description": "Account management" },
+    { "name": "Messages", "description": "Messaging operations" },
+    { "name": "Config", "description": "Configuration settings" }
+  ],
   "paths": {
-    "/auth/accounts": {
+    "/api/accounts": {
       "get": {
         "summary": "List all accounts",
+        "tags": ["Accounts"],
         "responses": {
-          "200": { "description": "List of accounts" }
+          "200": {
+            "description": "List of accounts with status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "accountId": { "type": "string" },
+                      "isAuthenticated": { "type": "boolean" },
+                      "isListening": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       },
       "post": {
-        "summary": "Add a new account",
+        "summary": "Create a new account",
+        "tags": ["Accounts"],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "accountId": { "type": "string", "example": "my_account_1" }
+                  "accountId": { "type": "string" }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Account added" }
+          "200": {
+            "description": "Account created successfully"
+          }
         }
       }
     },
-    "/auth/logout": {
-      "post": {
-        "summary": "Logout account",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "accountId": { "type": "string", "example": "my_account_1" }
-                }
+    "/qr/{accountId}.png": {
+      "get": {
+        "summary": "Get login QR code for account",
+        "tags": ["Accounts"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR code image",
+            "content": {
+              "image/png": {
+                "schema": { "type": "string", "format": "binary" }
               }
             }
-          }
-        },
-        "responses": {
-          "200": { "description": "Logged out" }
+          },
+          "404": { "description": "QR code not found" }
         }
       }
     },
-    "/auth/{accountId}": {
+    "/api/{accountId}": {
       "delete": {
-        "summary": "Delete account and all session data",
+        "summary": "Delete account and all its data",
+        "tags": ["Accounts"],
         "parameters": [
           {
-            "name": "accountId",
             "in": "path",
+            "name": "accountId",
             "required": true,
             "schema": { "type": "string" }
           }
         ],
         "responses": {
-          "200": { "description": "Deleted" }
+          "200": { "description": "Account deleted" }
         }
       }
     },
-    "/auth/{accountId}/status": {
-      "get": {
-        "summary": "Get connection status",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": { "description": "Current status" }
-        }
-      }
-    },
-    "/auth/{accountId}/qr": {
-      "get": {
-        "summary": "Get current QR code for account",
-        "parameters": [
-          {
-            "name": "accountId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": { "description": "QR code data" }
-        }
-      }
-    },
-    "/messages/send": {
+    "/api/{accountId}/re-login": {
       "post": {
-        "summary": "Send direct message",
+        "summary": "Force re-login for account",
+        "tags": ["Accounts"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Login process restarted" }
+        }
+      }
+    },
+    "/api/{accountId}/auth-status": {
+      "get": {
+        "summary": "Get auth status for account",
+        "tags": ["Accounts"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Auth status" }
+        }
+      }
+    },
+    "/api/{accountId}/refresh-qr": {
+      "post": {
+        "summary": "Refresh QR code for account",
+        "tags": ["Accounts"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Success or failure message" }
+        }
+      }
+    },
+    "/api/{accountId}/send": {
+      "post": {
+        "summary": "Send message",
+        "tags": ["Messages"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -117,9 +175,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "accountId": { "type": "string", "example": "my_account_1" },
-                  "to": { "type": "string", "example": "849xxxxxxxx@s.whatsapp.net" },
-                  "message": { "type": "string", "example": "Hello" }
+                  "text": { "type": "string" },
+                  "threadId": { "type": "string" },
+                  "type": {
+                    "type": "string",
+                    "enum": ["user", "group"]
+                  }
                 }
               }
             }
@@ -130,13 +191,14 @@
         }
       }
     },
-    "/groups/list": {
+    "/api/{accountId}/groups": {
       "get": {
-        "summary": "List all participating groups",
+        "summary": "Get groups",
+        "tags": ["Messages"],
         "parameters": [
           {
+            "in": "path",
             "name": "accountId",
-            "in": "query",
             "required": true,
             "schema": { "type": "string" }
           }
@@ -146,46 +208,50 @@
         }
       }
     },
-    "/groups/send": {
-      "post": {
-        "summary": "Send message to a group",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "accountId": { "type": "string", "example": "my_account_1" },
-                  "groupId": { "type": "string", "example": "123456789@g.us" },
-                  "message": { "type": "string", "example": "Hello group" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": { "description": "Group message sent" }
-        }
-      }
-    },
-    "/settings/webhook": {
+    "/api/{accountId}/messages": {
       "get": {
-        "summary": "Get webhook configuration",
+        "summary": "Get messages",
+        "tags": ["Messages"],
         "parameters": [
           {
+            "in": "path",
             "name": "accountId",
-            "in": "query",
             "required": true,
             "schema": { "type": "string" }
           }
         ],
         "responses": {
-          "200": { "description": "Webhook URL" }
+          "200": { "description": "List of messages" }
+        }
+      }
+    },
+    "/api/{accountId}/webhook-config": {
+      "get": {
+        "summary": "Get webhook config",
+        "tags": ["Config"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Webhook config" }
         }
       },
       "post": {
-        "summary": "Update webhook configuration",
+        "summary": "Update webhook config",
+        "tags": ["Config"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "accountId",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -193,15 +259,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "accountId": { "type": "string", "example": "my_account_1" },
-                  "webhookUrl": { "type": "string", "example": "https://myserver.com/callback" }
+                  "webhookUrl": { "type": "string" }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Webhook updated" }
+          "200": { "description": "Webhook config updated" }
         }
       }
     }

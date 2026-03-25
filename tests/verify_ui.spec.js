@@ -2,14 +2,16 @@ const { test, expect } = require('@playwright/test');
 
 test('Verify dashboard has sidebar and Add Account button', async ({ page }) => {
   await page.goto('http://localhost:3000/dashboard');
-  await expect(page.locator('.sidebar')).toBeVisible();
-  const addBtn = page.locator('button:has-text("Add Account")');
+  // Check for sidebar (using id as per new index.html)
+  await expect(page.locator('#sidebar')).toBeVisible();
+  // Add button is a '+' button now in sidebar-header
+  const addBtn = page.locator('#sidebar-header button');
   await expect(addBtn).toBeVisible();
 });
 
 test('Verify adding and deleting an account', async ({ page }) => {
   await page.goto('http://localhost:3000/dashboard');
-  const accountId = 'test_acc_to_delete';
+  const accountId = 'test_acc_' + Date.now();
 
   // Handle prompt for add and confirm for delete
   page.on('dialog', async dialog => {
@@ -23,16 +25,16 @@ test('Verify adding and deleting an account', async ({ page }) => {
   });
 
   // Add
-  await page.click('button:has-text("Add Account")');
+  await page.click('#sidebar-header button');
   await expect(page.locator('#active-account-id')).toContainText(accountId);
-  await expect(page.locator(`.account-item:has-text("${accountId}")`)).toBeVisible();
+  await expect(page.locator(`#account-list .account-item:has-text("${accountId}")`)).toBeVisible();
 
   // Delete
-  await page.click('button:has-text("Delete Account")');
+  await page.click('button:has-text("Delete")');
 
   // Should go back to welcome screen
   await expect(page.locator('#welcome-screen')).toBeVisible();
-  await expect(page.locator(`.account-item:has-text("${accountId}")`)).not.toBeVisible();
+  await expect(page.locator(`#account-list .account-item:has-text("${accountId}")`)).not.toBeVisible();
 });
 
 test('Verify API Docs page loads', async ({ page }) => {
